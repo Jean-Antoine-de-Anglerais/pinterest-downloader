@@ -1,0 +1,64 @@
+name: Build Binaries
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: '3.11'
+            artifact-name: pinterest-downloader-linux
+          - os: windows-latest
+            python-version: '3.11'
+            artifact-name: pinterest-downloader-windows.exe
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build executable (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          pyinstaller \
+            --onefile \
+            --name pinterest-downloader \
+            --add-data ".:." \
+            pinterest-downloader.py
+
+      - name: Build executable (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          pyinstaller `
+            --onefile `
+            --name pinterest-downloader `
+            --add-data ".;." `
+            pinterest-downloader.py
+
+      - name: Upload Linux artifact
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: dist/pinterest-downloader
+
+      - name: Upload Windows artifact
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: dist/pinterest-downloader.exe
